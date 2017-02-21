@@ -31,6 +31,8 @@ class FileMonitor
                 end
             end
         end
+
+        exit if fork # run the notifier in a background process
         @notifier.run
     end
 
