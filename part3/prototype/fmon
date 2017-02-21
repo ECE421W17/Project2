@@ -1,0 +1,31 @@
+#! /usr/bin/ruby
+
+require_relative 'filemonitor'
+
+class FMon
+
+    def self.run
+        fm = FileMonitor.new
+        mode, delay, files, action = parse_command_input
+        fm.filewatch(mode, delay, files, &action)
+    end
+
+    def self.parse_command_input
+        mode = case ARGV[1]
+               when "M" 
+                   :modify
+               when "D" 
+                   :delete
+               when "C" 
+                   :create
+               end
+
+        delay = ARGV[2].to_i
+        files = ARGV[3].split(',')
+        action = eval "lambda{#{ARGV[4]}}"
+
+        [mode, delay, files, action]
+    end
+end
+
+FMon.run
