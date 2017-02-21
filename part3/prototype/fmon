@@ -11,7 +11,7 @@ class FMon
     end
 
     def self.parse_command_input
-        mode = case ARGV[1]
+        mode = case ARGV[0]
                when "M" 
                    :modify
                when "D" 
@@ -20,9 +20,9 @@ class FMon
                    :create
                end
 
-        delay = ARGV[2].to_i
-        files = ARGV[3].split(',')
-        action = eval "lambda{#{ARGV[4]}}"
+        delay = ARGV[1].to_i
+        files = ARGV[2].split(',')
+        action = eval "lambda{#{ARGV[3]}}"
 
         [mode, delay, files, action]
     end

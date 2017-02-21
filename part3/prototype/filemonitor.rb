@@ -18,7 +18,8 @@ class FileMonitor
             filenames.each do |fn|
                 @notifier.watch(fn, type) do |event|
                     sleep millis_to_sec(duration)
-                    action.call(event.name)
+                    action.call(fn)
+                    @notifier.close
                 end
             end
         elsif @directory_watch_types.include?(type)
@@ -27,6 +28,7 @@ class FileMonitor
                     if event.name == fn
                         sleep millis_to_sec(duration)
                         action.call(event.name)
+                        @notifier.close
                     end
                 end
             end
