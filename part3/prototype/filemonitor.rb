@@ -1,21 +1,37 @@
+require 'rb-inotify'
+require 'set'
+
 class FileMonitor
 
-    def initialize
-        @filenames = { :creation => [],
-                       :alter => [],
-                       :destroy => [] }
-        @duration = { :creation => 0,
-                   :alter => 0,
-                   :destroy => 0 }
+    def millis_to_sec(duration)
+        duration/1000.0
     end
 
-    def filewatch(type, duration, filenames)
-        if !@filenames.has_key?(type) or !@duration.has_key?(type)
-            raise "Some exception"
-        end
+    def initialize
+        @notifier = INotify::Notifier.new
+        @file_watch_types = Set.new [:modify]
+        @directory_watch_types = Set.new [:create, :delete]
+    end
 
-        @filenames[type] = filenames
-        @duration[type] = duration
+    def filewatch(type, duration, filenames, &action)
+        if @file_watch_types.include?(type)
+            filenames.each do |fn|
+                @notifier.watch(fn, type) do |event|
+                    sleep millis_to_sec(duration)
+                    action.call(event.name)
+                end
+            end
+        elsif @directory_watch_types.include?(type)
+            filenames.each do |fn|
+                @notifier.watch(".", type) do |event|
+                    if event.name == fn
+                        sleep millis_to_sec(duration)
+                        action.call(event.name)
+                    end
+                end
+            end
+        end
+        @notifier.run
     end
 
 end
