@@ -1,7 +1,7 @@
 #! /usr/bin/env ruby
 
 require 'getoptlong'
-require 'messageprinter'
+require_relative 'messageprinter'
 
 def print_help
     puts "driver [AMOUNT] [MESSAGE]"
@@ -16,7 +16,7 @@ else
     amount = ARGV[0].to_i
     message = ARGV[1]
     # Add more error handling
-    puts Messageprinter.methods
+    exit if fork
     Messageprinter.wait_and_print(amount, message)
 end
 

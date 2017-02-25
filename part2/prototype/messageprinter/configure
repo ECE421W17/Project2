@@ -1,4 +1,4 @@
 #! /usr/bin/env bash
 
+rm -f messageprinter_wrap.c
 swig -ruby messageprinter.i
-ruby extconf.rb
