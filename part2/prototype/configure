@@ -1,0 +1,4 @@
+#! /usr/bin/env bash
+
+swig -ruby messageprinter.i
+ruby extconf.rb

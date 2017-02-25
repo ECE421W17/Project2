@@ -1,6 +1,7 @@
-#! /usr/bin/ruby
+#! /usr/bin/env ruby
 
 require 'getoptlong'
+require 'messageprinter'
 
 def print_help
     puts "driver [AMOUNT] [MESSAGE]"
@@ -9,12 +10,13 @@ def print_help
 end
 
 
-if ARGV.size != 3
+if ARGV.size != 2
     print_help
 else
-    amount = ARGV[1].to_i
-    message = ARGV[2]
+    amount = ARGV[0].to_i
+    message = ARGV[1]
     # Add more error handling
-    TimedMessage.start_timeout(amount, message)
+    puts Messageprinter.methods
+    Messageprinter.wait_and_print(amount, message)
 end
 
