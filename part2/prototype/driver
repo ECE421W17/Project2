@@ -1,7 +1,10 @@
 #! /usr/bin/env ruby
 
 require 'getoptlong'
+require 'test/unit/assertions'
 require_relative 'messageprinter'
+
+include Test::Unit::Assertions
 
 def print_help
     puts "driver [AMOUNT] [MESSAGE]"
@@ -13,10 +16,12 @@ end
 if ARGV.size != 2
     print_help
 else
+    assert(ARGV[0].respond_to?(:to_i), "Time in milliseconds is not an integer")
     amount = ARGV[0].to_i
+    assert(ARGV[1].respond_to?(:to_s), "Message is not a string")
+    assert(ARGV[1].to_s.length <= 256, "Message is too long")
     message = ARGV[1]
     # Add more error handling
     exit if fork
     Messageprinter.wait_and_print(amount, message)
 end
-
