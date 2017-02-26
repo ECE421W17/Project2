@@ -32,6 +32,8 @@ class FileMonitor
                     end
                 end
             end
+        else
+            raise ArgumentError, "The file watch type needs to be one of the symbols #{(@file_watch_types + @directory_watch_types).to_a}"
         end
 
         exit if fork # run the notifier in a background process
