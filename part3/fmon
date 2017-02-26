@@ -48,7 +48,7 @@ class FMon
                end
 
         delay = delay_input.to_i
-        raise ArgumentError, "#{delay_input} is not a valid delay time" unless delay > 0
+        raise ArgumentError, "#{delay_input} is not a valid delay time" unless delay >= 0
 
         files = files_input.split(',')
         files.each do |filename|
