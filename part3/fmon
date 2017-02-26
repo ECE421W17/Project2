@@ -1,0 +1,65 @@
+#! /usr/bin/ruby
+
+require_relative 'filemonitor'
+
+class FMon
+
+    def self.print_help
+        puts "USAGE:"
+        puts "fmon [MODE] [DELAY] [FILES] [ACTION]"
+        puts ""
+        puts "MODE: One of {M, C, D}, respectively Modify, Create, Delete"
+        puts "DELAY: the delay in milliseconds"
+        puts "FILES: A comma separated list of relative file paths"
+        puts "ACTION: a Ruby command, representing the action to be run once the files are executed, in single or double quotes."
+        puts "        The action needs to correspond to a Ruby block with zero or one parameters. If there's a parameter, it'll be"
+        puts "        bound to the file name"
+    end
+
+    def self.run
+        fm = FileMonitor.new
+
+        begin
+            mode, delay, files, action = parse_command_input
+        rescue ArgumentError => ae
+            puts "ERROR: #{ae}"
+            puts ""
+            print_help
+            exit
+        end
+
+        fm.filewatch(mode, delay, files, &action)
+    end
+
+    def self.parse_command_input
+        raise ArgumentError, "Wrong number of arguments" unless ARGV.length == 4
+
+        mode_input, delay_input, files_input, action_input = ARGV
+
+        mode = case mode_input
+               when "M" 
+                   :modify
+               when "D" 
+                   :delete
+               when "C" 
+                   :create
+               else
+                   raise ArgumentError, "#{mode_input} is not a valid mode"
+               end
+
+        delay = delay_input.to_i
+        raise ArgumentError, "#{delay_input} is not a valid delay time" unless delay > 0
+
+        files = files_input.split(',')
+        files.each do |filename|
+            raise ArgumentError, "The list of files '#{files_input}' is malformed" unless filename and not filename.empty?
+        end
+
+        action = eval "lambda{#{action_input}}"
+        raise ArgumentError, "'#{action_input}' is not a valid action" unless action and action.arity <= 1
+
+        [mode, delay, files, action]
+    end
+end
+
+FMon.run
