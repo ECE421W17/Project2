@@ -37,6 +37,8 @@ class FileMonitor
         end
 
         exit if fork # run the notifier in a background process
+
+        Process.setrlimit(:CORE, 0, 0) # don't dump core for security reasons
         @notifier.run
     end
 
