@@ -22,20 +22,14 @@ class BashShell
 
         command, arguments = get_user_command
 
-        # Start a new Process
         pid = Process.fork do
           begin
             _configure_user_command_process
 
             _process_user_command(command, arguments)
 
-          # TODO: Figure out how to catch/handle Errno exceptions...
           rescue RuntimeError => re
-            puts "Error: #{re.to_s}"
-
-          # TODO: Don't log error specifics
-          # PRIORITY: Why aren't exceptions being thrown anymore?
-          # => Seems to be that adding the "cd #{}; to the path in the exec call within the script prohibits the throwing of exceptions..."
+            puts "Runtime Error: #{re.to_s}"
           rescue SystemCallError => sce
             puts "System call error occured: #{sce.to_s}"
 
@@ -47,6 +41,8 @@ class BashShell
         end
 
         Process.wait(pid)
+
+        puts "Exit status: #{$?.exitstatus}"
 
         # Can you use Errno instead to check the return status of the last exec
         # call? Then use that to decide whether or not you should update the
@@ -63,36 +59,30 @@ class BashShell
   end
 
   def _get_cd_command_path(command_arguments)
-    # l_flags_regex = /-L(\s)+(\S)+/
+    flags_regex = /-(\S)+/
+
     l_flags_regex = /-L/
-    # p_flags_regex = /-P(\s)+(\S)+/
     p_flags_regex = /-P/
-    # e_flags_regex = /-e(\s)+(\S)+/
     e_flags_regex = /-e/
-    # at_flags_regex = /-@(\s)+(\S)+/
     at_flags_regex = /-@/
 
-    flags_regex = /-(\S)+/
+    flags = flags_regex.match(command_arguments)
 
     l_flags = l_flags_regex.match(command_arguments)
     p_flags = p_flags_regex.match(command_arguments)
     e_flags = e_flags_regex.match(command_arguments)
     at_flags = at_flags_regex.match(command_arguments)
 
-    flags = flags_regex.match(command_arguments)
-
-    puts "L flags: #{l_flags}"
-    puts "P flags: #{p_flags}"
-    puts "e flags: #{e_flags}"
-    puts "@ flags: #{at_flags}"
-
-    puts flags
-
     path = command_arguments
-    # path.slice! l_flags unless l_flags.nil?
+
     path.slice!(flags.to_s) unless flags.nil?
 
-    return path
+    path.slice!(l_flags.to_s) unless flags.nil?
+    path.slice!(p_flags.to_s) unless flags.nil?
+    path.slice!(e_flags.to_s) unless flags.nil?
+    path.slice!(at_flags.to_s) unless flags.nil?
+
+    return path.strip
   end
 
   def _verify_initialize_pre_conditions
@@ -108,8 +98,15 @@ class BashShell
 
     # Verify that the hash of the script matches that of the "released" file
     hash = Digest::SHA256.file @shell_command_handler_script_path
+    puts hash.hexdigest
+    # assert(hash.hexdigest ==
+    #   "37c4bfc99112b26affffe0a58ec5bde167e9e31ae574bae17f0aaca3d6fd0efe",
+    #     "The external shell command handler script has an invalid hash")
     assert(hash.hexdigest ==
-      "37c4bfc99112b26affffe0a58ec5bde167e9e31ae574bae17f0aaca3d6fd0efe",
+      # "a3ef22304370606509eb52bdc4bd71cfab4817914bf7d9e5d85058c4a33da615",
+      # "2b67989f6ae239d4c0ee67f8ebd80b3b12d003af171bbed67504f7fdd99f8dea",
+      # "2b67989f6ae239d4c0ee67f8ebd80b3b12d003af171bbed67504f7fdd99f8dea",
+      "303ad0cb539eb09589fc250560afb788080a7105999e84f1e3bdc7b8ecec819b",
         "The external shell command handler script has an invalid hash")
 
     @shell_command_handler_script_path.untaint
@@ -120,7 +117,7 @@ class BashShell
   end
 
   def _verify_get_user_command_post_conditions(command, arguments)
-    # TODO: Actually verify
+    assert(command.index(/\s+/).nil?, "Command must not contain spaces")
 
     command.untaint
     arguments.untaint
@@ -198,6 +195,8 @@ class BashShell
   def _update_working_directory_path_post_conditions
     # TODO: More verfication?
 
+    puts "Path in post condition: #{@working_directory_path}"
+
     assert(Dir.exist?(@working_directory_path),
       "The working directory of the executable is invalid")
     @working_directory_path.untaint
@@ -209,10 +208,20 @@ class BashShell
     # TODO: See if using Dir instead will work
     # => There's a chdir method, and a path method
     # => Maybe you could store a Dir object instead of the path
-    res = %x(cd #{@working_directory_path}; cd #{arguments}; pwd)
-    res = res.delete("\n")
+    Dir.chdir(@working_directory_path) {
+      Dir.chdir(arguments) {
+        # puts "Working directory: #{Dir.getwd}"
+        @working_directory_path = Dir.getwd
+      }
+    }
 
-    @working_directory_path = res
+
+    # puts 'HERE'
+    #
+    # res = %x(cd #{@working_directory_path}; cd #{arguments}; pwd)
+    # res = res.delete("\n")
+    #
+    # @working_directory_path = res
 
     _update_working_directory_path_post_conditions
   end
