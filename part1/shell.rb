@@ -52,13 +52,47 @@ class BashShell
         # call? Then use that to decide whether or not you should update the
         # internal path?
         # Update the internal working_directory_path
-        if command == 'cd' && !arguments.empty?
-          _upate_working_directory_path(arguments)
+        if command == 'cd'
+          path = _get_cd_command_path(arguments)
+          _upate_working_directory_path(arguments) unless path.empty?
         end
       rescue Interrupt
         abort("\n")
       end
     end
+  end
+
+  def _get_cd_command_path(command_arguments)
+    # l_flags_regex = /-L(\s)+(\S)+/
+    l_flags_regex = /-L/
+    # p_flags_regex = /-P(\s)+(\S)+/
+    p_flags_regex = /-P/
+    # e_flags_regex = /-e(\s)+(\S)+/
+    e_flags_regex = /-e/
+    # at_flags_regex = /-@(\s)+(\S)+/
+    at_flags_regex = /-@/
+
+    flags_regex = /-(\S)+/
+
+    l_flags = l_flags_regex.match(command_arguments)
+    p_flags = p_flags_regex.match(command_arguments)
+    e_flags = e_flags_regex.match(command_arguments)
+    at_flags = at_flags_regex.match(command_arguments)
+
+    flags = flags_regex.match(command_arguments)
+
+    puts "L flags: #{l_flags}"
+    puts "P flags: #{p_flags}"
+    puts "e flags: #{e_flags}"
+    puts "@ flags: #{at_flags}"
+
+    puts flags
+
+    path = command_arguments
+    # path.slice! l_flags unless l_flags.nil?
+    path.slice!(flags.to_s) unless flags.nil?
+
+    return path
   end
 
   def _verify_initialize_pre_conditions
