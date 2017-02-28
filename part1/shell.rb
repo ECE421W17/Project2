@@ -2,6 +2,42 @@ require 'shell'
 require 'fileutils'
 
 class BashShell
+  def _path_valid?
+    return false unless false
+  end
+
+  def _verify_initialize_pre_conditions
+  end
+
+  def _verify_initialize_post_conditions
+    # Check that paths are valid after initilization
+    # Untaint here? Or in methods?
+  end
+
+  def _configure_user_command_process
+    # Prohibit core dumps
+    Process.setrlimit(Process::RLIMIT_CORE, 0, 0)
+
+    # Ensure adequate safety level is set
+    # Note: If the 'load' method becomes uneeded, use level 2 instead
+    $SAFE = 1
+  end
+
+  def _process_user_command(command, arguments)
+    # Load external source to prohibit the possibility of external variables interacting with the namespace of the current process
+    ARGV[0] = @working_directory_path
+    ARGV[1] = command
+    ARGV[2] = arguments
+    load(@shell_command_handler_script_path, true)
+
+    # Run shell command
+    # output = command_handler command, arguments
+    #
+    # puts output.to_s
+
+  # TODO: Figure out how to catch/handle Errno exceptions...
+  end
+
   def initialize
     @working_directory_path = FileUtils.getwd
     @working_directory_path.untaint # TODO: ???
@@ -52,25 +88,9 @@ class BashShell
         # Start a new Process
         pid = Process.fork do
           begin
-            # Prohibit core dumps
-            Process.setrlimit(Process::RLIMIT_CORE, 0, 0)
+            _configure_user_command_process
 
-            # Ensure adequate safety level is set
-            # Note: If the 'load' method becomes uneeded, use level 2 instead
-            $SAFE = 1
-
-            # Load external source to prohibit the possibility of external variables interacting with the namespace of the current process
-            ARGV[0] = command
-            ARGV[1] = arguments
-            ARGV[2] = @working_directory_path
-            load(@shell_command_handler_script_path, true)
-
-            # Run shell command
-            # output = command_handler command, arguments
-            #
-            # puts output.to_s
-
-          # TODO: Figure out how to catch/handle Errno exceptions...
+            _process_user_command(command, arguments)
           rescue RuntimeError => re
             puts "Error: #{re.to_s}"
 

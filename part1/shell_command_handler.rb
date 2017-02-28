@@ -1,7 +1,7 @@
 # TODO: Try to get user input in here instead of
-command = ARGV[0]
-arguments = ARGV[1]
-working_directory = ARGV[2]
+working_directory = ARGV[0]
+command = ARGV[1]
+arguments = ARGV[2]
 
 Dir.chdir(working_directory) {
   if command == 'cd'
