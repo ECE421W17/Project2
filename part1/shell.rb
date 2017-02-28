@@ -1,5 +1,5 @@
+require 'digest'
 require 'fileutils'
-# require 'shell' # TODO: Remove?
 require 'test/unit/assertions'
 
 include Test::Unit::Assertions
@@ -19,19 +19,8 @@ class BashShell
     while true do
       begin
         print "#{@working_directory_path}$ "
-        user_input = gets
 
-        # TODO: Add support for pipes also?
-        # regex = /\S+(\s+\S+)*/
-        command_regex = /\S+/
-        arguments_regex = /(\s+\S+)+/
-
-        command = command_regex.match(user_input).to_s
-        arguments = arguments_regex.match(user_input).to_s.strip
-
-        _validate_user_input(command, arguments)
-
-        # Use getoptlong somehow... ?
+        command, arguments = get_user_command
 
         # Start a new Process
         pid = Process.fork do
@@ -39,6 +28,8 @@ class BashShell
             _configure_user_command_process
 
             _process_user_command(command, arguments)
+
+          # TODO: Figure out how to catch/handle Errno exceptions...
           rescue RuntimeError => re
             puts "Error: #{re.to_s}"
 
@@ -57,6 +48,9 @@ class BashShell
 
         Process.wait(pid)
 
+        # Can you use Errno instead to check the return status of the last exec
+        # call? Then use that to decide whether or not you should update the
+        # internal path?
         # Update the internal working_directory_path
         if command == 'cd' && !arguments.empty?
           _upate_working_directory_path(arguments)
@@ -78,8 +72,40 @@ class BashShell
     assert(Dir.exist?(@working_directory_path),
       "The working directory of the executable is invalid")
 
+    # Verify that the hash of the script matches that of the "released" file
+    hash = Digest::SHA256.file @shell_command_handler_script_path
+    assert(hash.hexdigest ==
+      "37c4bfc99112b26affffe0a58ec5bde167e9e31ae574bae17f0aaca3d6fd0efe",
+        "The external shell command handler script has an invalid hash")
+
     @shell_command_handler_script_path.untaint
     @working_directory_path.untaint
+  end
+
+  def _verify_get_user_command_pre_conditions
+  end
+
+  def _verify_get_user_command_post_conditions(command, arguments)
+    # TODO: Actually verify
+
+    command.untaint
+    arguments.untaint
+  end
+
+  def get_user_command
+    _verify_get_user_command_pre_conditions
+
+    user_input = gets
+
+    command_regex = /\S+/
+    arguments_regex = /(\s+\S+)+/
+
+    command = command_regex.match(user_input).to_s
+    arguments = arguments_regex.match(user_input).to_s.strip
+
+    _verify_get_user_command_post_conditions(command, arguments)
+
+    return command, arguments
   end
 
   def _configure_user_command_process
@@ -117,38 +143,34 @@ class BashShell
   def _process_user_command(command, arguments)
     _verify_process_user_command_pre_conditions
 
-    # Load external source to prohibit the possibility of external variables interacting with the namespace of the current process
+    # Load external source to prohibit the possibility of external variables
+    # interacting with the namespace of the current process
     ARGV[0] = @working_directory_path
     ARGV[1] = command
     ARGV[2] = arguments
     load(@shell_command_handler_script_path, true)
 
-    # Run shell command
-    # output = command_handler command, arguments
-    #
-    # puts output.to_s
-
-    # TODO: Figure out how to catch/handle Errno exceptions...
-
     _verify_process_user_command_post_conditions
   end
 
-  def _validate_user_input(command, arguments)
-    # PRIORITY: Properly vet the inputs; maybe in pre/post conditions
-    command.untaint
-    arguments.untaint
-  end
-
-  def _update_working_directory_path_pre_conditions
-    # Check that path is valid
+  def _update_working_directory_path_pre_conditions(arguments)
+    assert(!arguments.tainted?, "User command arguments are tainted")
+    assert(
+      !@working_directory_path.tainted?, "Working directory path is tainted")
+    assert(Dir.exist?(@working_directory_path),
+      "The working directory of the executable is invalid")
   end
 
   def _update_working_directory_path_post_conditions
-    # Check that path is valid
+    # TODO: More verfication?
+
+    assert(Dir.exist?(@working_directory_path),
+      "The working directory of the executable is invalid")
+    @working_directory_path.untaint
   end
 
   def _upate_working_directory_path(arguments)
-    _update_working_directory_path_pre_conditions
+    _update_working_directory_path_pre_conditions(arguments)
 
     # TODO: See if using Dir instead will work
     # => There's a chdir method, and a path method
@@ -157,9 +179,6 @@ class BashShell
     res = res.delete("\n")
 
     @working_directory_path = res
-
-    # TODO: Actually do some sort of validation
-    # @working_directory_path.untaint
 
     _update_working_directory_path_post_conditions
   end
