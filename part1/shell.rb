@@ -27,27 +27,16 @@ class BashShell
             _configure_user_command_process
 
             _process_user_command(command, arguments)
-
           rescue RuntimeError => re
             puts "Runtime Error: #{re.to_s}"
+          # TODO: Obfuscate more?
           rescue SystemCallError => sce
             puts "System call error occured: #{sce.to_s}"
-
-            # Workaround:
-            # => If a 'cd' command fails to execute, do not update the
-            # => internal working_directory_path
-            arguments = '' unless command != 'cd'
           end
         end
 
         Process.wait(pid)
 
-        puts "Exit status: #{$?.exitstatus}"
-
-        # Can you use Errno instead to check the return status of the last exec
-        # call? Then use that to decide whether or not you should update the
-        # internal path?
-        # Update the internal working_directory_path
         if command == 'cd'
           path = _get_cd_command_path(arguments)
           _upate_working_directory_path(arguments) unless path.empty?
@@ -89,8 +78,6 @@ class BashShell
   end
 
   def _verify_initialize_post_conditions
-    # TODO: Add some regex verification?
-
     assert(File.exist?(@shell_command_handler_script_path),
       "The given shell command handler file path is invalid")
     assert(Dir.exist?(@working_directory_path),
@@ -98,14 +85,7 @@ class BashShell
 
     # Verify that the hash of the script matches that of the "released" file
     hash = Digest::SHA256.file @shell_command_handler_script_path
-    puts hash.hexdigest
-    # assert(hash.hexdigest ==
-    #   "37c4bfc99112b26affffe0a58ec5bde167e9e31ae574bae17f0aaca3d6fd0efe",
-    #     "The external shell command handler script has an invalid hash")
     assert(hash.hexdigest ==
-      # "a3ef22304370606509eb52bdc4bd71cfab4817914bf7d9e5d85058c4a33da615",
-      # "2b67989f6ae239d4c0ee67f8ebd80b3b12d003af171bbed67504f7fdd99f8dea",
-      # "2b67989f6ae239d4c0ee67f8ebd80b3b12d003af171bbed67504f7fdd99f8dea",
       "303ad0cb539eb09589fc250560afb788080a7105999e84f1e3bdc7b8ecec819b",
         "The external shell command handler script has an invalid hash")
 
@@ -193,10 +173,6 @@ class BashShell
   end
 
   def _update_working_directory_path_post_conditions
-    # TODO: More verfication?
-
-    puts "Path in post condition: #{@working_directory_path}"
-
     assert(Dir.exist?(@working_directory_path),
       "The working directory of the executable is invalid")
     @working_directory_path.untaint
@@ -205,23 +181,15 @@ class BashShell
   def _upate_working_directory_path(arguments)
     _update_working_directory_path_pre_conditions(arguments)
 
-    # TODO: See if using Dir instead will work
-    # => There's a chdir method, and a path method
-    # => Maybe you could store a Dir object instead of the path
-    Dir.chdir(@working_directory_path) {
-      Dir.chdir(arguments) {
-        # puts "Working directory: #{Dir.getwd}"
-        @working_directory_path = Dir.getwd
+    begin
+      Dir.chdir(@working_directory_path) {
+        Dir.chdir(arguments) {
+          @working_directory_path = Dir.getwd
+        }
       }
-    }
-
-
-    # puts 'HERE'
-    #
-    # res = %x(cd #{@working_directory_path}; cd #{arguments}; pwd)
-    # res = res.delete("\n")
-    #
-    # @working_directory_path = res
+    rescue Errno::ENOENT
+      # Invalid path
+    end
 
     _update_working_directory_path_post_conditions
   end
