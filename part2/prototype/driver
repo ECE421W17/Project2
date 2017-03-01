@@ -8,20 +8,55 @@ include Test::Unit::Assertions
 
 def print_help
     puts "driver [AMOUNT] [MESSAGE]"
-    puts "AMOUNT: number of milliseconds to wait"
-    puts "MESSAGE: message to be displayed after timeout. Needs to be in milliseconds"
+    # The following range was chosen because the time in seconds will be of
+    # time_t, which is of c type int, which can hold up to at least 32767 (on
+    # a 32 bit architecture) and then, since the milliseconds are separated,
+    # they can go up to 999
+    puts "AMOUNT: number of milliseconds to wait (between 0 and 32767999)"
+    puts "MESSAGE: message to be displayed after timeout (up to 256 characters)"
+end
+
+def parse_command_input
+    raise ArgumentError, "Wrong number of arguments" unless ARGV.size == 2
+
+    raise ArgumentError, "Time in milliseconds is not an integer" unless ARGV[0].respond_to?(:to_i)
+    raise ArgumentError, "Time in milliseconds is not in the range 0 to 32767999" unless ARGV[0].to_i >= 0 and ARGV[0].to_i <= 32767999
+
+    raise ArgumentError, "Message is not a string" unless ARGV[1].respond_to?(:to_s)
+    raise ArgumentError, "Message is too long" unless ARGV[1].to_s.length <= 256
+end
+
+def parse_errno
+    if (Messageprinter.errno == Errno::EINTR::Errno)
+        raise Errno::EINTR, "The pause has been interrupted by a signal that was delivered to the process. Abort."
+    elsif (Messageprinter.errno == Errno::EFAULT::Errno)
+        raise Errno::EFAULT, "Problem with copying information from user space. Abort."
+    elsif (Messageprinter.errno == Errno::EINVAL::Errno)
+        raise Errno::EINVAL, "The value of nanoseconds in the sleep function was not within 0 to 999999999 or the value of seconds was negative. Abort."
+    end
 end
 
 
-if ARGV.size != 2
-    print_help
-else
-    assert(ARGV[0].respond_to?(:to_i), "Time in milliseconds is not an integer")
-    amount = ARGV[0].to_i
-    assert(ARGV[1].respond_to?(:to_s), "Message is not a string")
-    assert(ARGV[1].to_s.length <= 256, "Message is too long")
-    message = ARGV[1]
-    # Add more error handling
+def drive_wait_and_print()
+    begin
+        parse_command_input
+        amount = ARGV[0].to_i
+        message = ARGV[1]
+    rescue ArgumentError => ae
+        puts "ERROR: #{ae}"
+        puts ""
+        print_help
+        exit
+    end
+
     exit if fork
-    Messageprinter.wait_and_print(amount, message)
+    # Convert amount into seconds and nanoseconds for Messageprinter
+    sec = amount/1000
+    nsec = (amount % 1000) * 1000000
+    ret = Messageprinter.wait_and_print(sec, nsec, message)
+    if (ret == -1)
+        parse_errno
+    end
 end
+
+drive_wait_and_print

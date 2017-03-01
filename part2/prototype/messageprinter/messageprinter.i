@@ -3,7 +3,13 @@
 %{
 #include <unistd.h>
 #include <stdio.h>
-extern void wait_and_print(unsigned time, char * msg);
+#include <time.h>
+#include <errno.h>
+extern int wait_and_print(long sec, long nsec, char * msg);
 %}
 
-extern void wait_and_print(unsigned time, char * msg);
+%inline %{
+extern int errno;
+%}
+
+extern int wait_and_print(long sec, long nsec, char * msg);
