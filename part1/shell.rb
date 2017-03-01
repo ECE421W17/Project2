@@ -20,16 +20,13 @@ class BashShell
       begin
         print "#{@working_directory_path}$ "
 
-        command, arguments = get_user_command
+        command, arguments = _get_user_command
 
         pid = Process.fork do
           begin
             _configure_user_command_process
 
             _process_user_command(command, arguments)
-          rescue RuntimeError => re
-            puts "Runtime Error: #{re.to_s}"
-          # TODO: Obfuscate more?
           rescue SystemCallError => sce
             puts "System call error occured: #{sce.to_s}"
           end
@@ -86,7 +83,7 @@ class BashShell
     # Verify that the hash of the script matches that of the "released" file
     hash = Digest::SHA256.file @shell_command_handler_script_path
     assert(hash.hexdigest ==
-      "303ad0cb539eb09589fc250560afb788080a7105999e84f1e3bdc7b8ecec819b",
+      "dfeb3366eb22287fbb923d97ac29f2010e2823383ebb0aa8253e199edb087618",
         "The external shell command handler script has an invalid hash")
 
     @shell_command_handler_script_path.untaint
@@ -103,7 +100,7 @@ class BashShell
     arguments.untaint
   end
 
-  def get_user_command
+  def _get_user_command
     _verify_get_user_command_pre_conditions
 
     user_input = gets
@@ -164,7 +161,7 @@ class BashShell
     _verify_process_user_command_post_conditions
   end
 
-  def _update_working_directory_path_pre_conditions(arguments)
+  def _verify_update_working_directory_path_pre_conditions(arguments)
     assert(!arguments.tainted?, "User command arguments are tainted")
     assert(
       !@working_directory_path.tainted?, "Working directory path is tainted")
@@ -172,14 +169,14 @@ class BashShell
       "The working directory of the executable is invalid")
   end
 
-  def _update_working_directory_path_post_conditions
+  def _verify_update_working_directory_path_post_conditions
     assert(Dir.exist?(@working_directory_path),
       "The working directory of the executable is invalid")
     @working_directory_path.untaint
   end
 
   def _upate_working_directory_path(arguments)
-    _update_working_directory_path_pre_conditions(arguments)
+    _verify_update_working_directory_path_pre_conditions(arguments)
 
     begin
       Dir.chdir(@working_directory_path) {
@@ -191,7 +188,7 @@ class BashShell
       # Invalid path
     end
 
-    _update_working_directory_path_post_conditions
+    _verify_update_working_directory_path_post_conditions
   end
 end
 

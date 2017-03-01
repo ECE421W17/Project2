@@ -3,17 +3,10 @@ command = ARGV[1]
 arguments = ARGV[2]
 
 Dir.chdir(working_directory) {
+  command_string = "#{command} #{arguments}"
   if command == 'cd'
-    unless arguments.empty?
-      system(command, arguments)
-    else
-      system(command)
-    end
+    system(command_string)
   else
-    unless arguments.empty?
-      exec(command, arguments)
-    else
-      exec(command)
-    end
+    exec(command_string)
   end
 }
