@@ -14,7 +14,3 @@ int wait_and_print(long sec, long nsec, char * msg) {
     printf("\n%s\n", msg);
     return 0;
 }
-
-// int main() {
-//   wait_and_print(1, 1, "yo");
-// }

@@ -7,7 +7,7 @@ require_relative 'messageprinter'
 include Test::Unit::Assertions
 
 def print_help
-    puts "driver [AMOUNT] [MESSAGE]"
+    puts "timer [AMOUNT] [MESSAGE]"
     # The following range was chosen because the time in seconds will be of
     # time_t, which is of c type int, which can hold up to at least 32767 (on
     # a 32 bit architecture) and then, since the milliseconds are separated,
